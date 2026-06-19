@@ -21,14 +21,14 @@ services:
       todoapp-postgres:
         condition: service_healthy
     volumes:
-      - ${PROJECT_ROOT:-.}/migrations:/migrations
+      - ${PROJECT_ROOT}/migrations:/migrations
 
   port-forwarder:
     image: alpine/socat:1.8.0.3
     container_name: todoapp-postgres-port-forwarder
     command: tcp-listen:5432,fork,reuseaddr tcp-connect:todoapp-postgres:5432
     ports:
-      - "127.0.0.1:5433:5432"
+      - "127.0.0.1:5432:5432"
 
 volumes:
   pgdata:
