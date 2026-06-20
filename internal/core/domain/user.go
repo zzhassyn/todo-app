@@ -92,3 +92,10 @@ func (u *User) ApplyPatch(patch UserPatch) error {
 	*u = tmp
 	return nil
 }
+
+func NewUserPatch(fullName Nullable[string], phoneNumber Nullable[string]) UserPatch {
+	return UserPatch{
+		FullName:    fullName,
+		PhoneNumber: phoneNumber,
+	}
+}
