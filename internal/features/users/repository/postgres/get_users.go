@@ -12,7 +12,7 @@ func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int)
 	defer cancel()
 
 	query := `
-	SELECT id, version, full_name, phone_number
+	SELECT id, version, full_name, phone_number, email, password_hash
 	FROM todoapp.users
 	ORDER BY id ASC
 	LIMIT $1 OFFSET $2;
@@ -32,6 +32,8 @@ func (r *UsersRepository) GetUsers(ctx context.Context, limit *int, offset *int)
 			&userModel.Version,
 			&userModel.FullName,
 			&userModel.PhoneNumber,
+			&userModel.Email,
+			&userModel.PasswordHash,
 		); err != nil {
 			return nil, fmt.Errorf("scan users: %w", err)
 		}

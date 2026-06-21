@@ -31,7 +31,12 @@ func (s *HTTPServer) RegisterAPIRouters(routers ...*APIVersionRouter) {
 	for _, router := range routers {
 		prefix := "/api/" + string(router.apiVersion)
 
-		s.mux.Handle(prefix+"/", router.WithMiddleware())
+		// router's own ServeMux has routes registered without the
+		// "/api/v{n}" prefix (e.g. "GET /auth/me"), but incoming requests
+		// still carry the full path (e.g. "/api/v1/auth/me"). http.ServeMux
+		// does not strip prefixes on its own, so without StripPrefix every
+		// request would 404 inside the inner mux.
+		s.mux.Handle(prefix+"/", http.StripPrefix(prefix, router.WithMiddleware()))
 	}
 }
 

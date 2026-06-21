@@ -1,0 +1,143 @@
+/* ============================================================
+   design tokens
+   ------------------------------------------------------------
+   aesthetic: a code editor's buffer, not a chat app and not a
+   dashboard. tasks are lines in a file; finishing one is a diff.
+   palette is warm/earthen (gruvbox-adjacent) rather than the
+   default near-black + neon-accent combination.
+   ============================================================ */
+:root {
+  /* surfaces */
+  --bg: #1d2021;
+  --bg-raised: #242730;
+  --bg-gutter: #181a1b;
+  --panel: #282828;
+  --panel-line: #32302f;
+  --border: #3c3836;
+  --border-soft: #2d2b29;
+
+  /* text */
+  --fg: #ebdbb2;
+  --fg-dim: #d5c4a1;
+  --fg-muted: #a89984;
+  --fg-faint: #6f6259;
+
+  /* accents */
+  --accent-add: #b8bb26; /* new / active task, "+" diff marker */
+  --accent-add-dim: #98971a;
+  --accent-done: #83a598; /* completed task, muted blue-teal */
+  --accent-warn: #fe8019; /* focus / caret / primary action */
+  --accent-warn-dim: #d65d0e;
+  --accent-danger: #fb4934;
+  --accent-danger-dim: #cc241d;
+
+  /* type */
+  --font-mono: "Fragment Mono", ui-monospace, "JetBrains Mono", monospace;
+  --font-display: "Newsreader", "Iowan Old Style", serif;
+
+  /* metrics */
+  --radius: 3px;
+  --gutter-width: 3.4rem;
+  --max-width: 760px;
+  --line-h: 2.15rem;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  background-image: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.18) 0%,
+      transparent 8%
+    ),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent var(--line-h)
+    );
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+::selection {
+  background: var(--accent-warn-dim);
+  color: var(--bg);
+}
+
+a {
+  color: var(--accent-done);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* visible focus ring everywhere, no exceptions */
+:focus-visible {
+  outline: 1.5px solid var(--accent-warn);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

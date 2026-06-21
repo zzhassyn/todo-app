@@ -8,6 +8,8 @@ import (
 	core_postgres_pool "github.com/zzhassyn/todo-app/internal/core/repository/postgres/pool"
 )
 
+const pgErrCodeUniqueViolation = "23505"
+
 type pgxRows struct {
 	pgx.Rows
 }
@@ -21,6 +23,11 @@ func (r pgxRow) Scan(dest ...any) error {
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return core_postgres_pool.ErrNoRows
+		}
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgErrCodeUniqueViolation {
+			return core_postgres_pool.ErrUniqueViolation
 		}
 
 		return err

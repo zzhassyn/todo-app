@@ -8,29 +8,44 @@ import (
 )
 
 type User struct {
-	ID          int
-	Version     int
-	FullName    string
-	PhoneNumber *string
+	ID           int
+	Version      int
+	FullName     string
+	PhoneNumber  *string
+	Email        string
+	PasswordHash string
 }
 
-func NewUser(id int, version int, fullName string, phoneNumber *string) User {
+func NewUser(
+	id int,
+	version int,
+	fullName string,
+	phoneNumber *string,
+	email string,
+	passwordHash string,
+) User {
 	return User{
-		ID:          id,
-		Version:     version,
-		FullName:    fullName,
-		PhoneNumber: phoneNumber,
+		ID:           id,
+		Version:      version,
+		FullName:     fullName,
+		PhoneNumber:  phoneNumber,
+		Email:        email,
+		PasswordHash: passwordHash,
 	}
 }
 
-func NewUserUninitialized(fullName string, phoneNumber *string) User {
+func NewUserUninitialized(fullName string, phoneNumber *string, email string, passwordHash string) User {
 	return NewUser(
 		UninitializedID,
 		UninitializedVersion,
 		fullName,
 		phoneNumber,
+		email,
+		passwordHash,
 	)
 }
+
+var emailRegexp = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 
 func (u *User) Validate() error {
 	fullNameLength := len([]rune(u.FullName))
@@ -53,6 +68,14 @@ func (u *User) Validate() error {
 		if !re.MatchString(*u.PhoneNumber) {
 			return fmt.Errorf("invalid `PhoneNumber` format: %s: %w", *u.PhoneNumber, core_errors.ErrInvalidArgument)
 		}
+	}
+
+	if !emailRegexp.MatchString(u.Email) {
+		return fmt.Errorf("invalid `Email` format: %s: %w", u.Email, core_errors.ErrInvalidArgument)
+	}
+
+	if u.PasswordHash == "" {
+		return fmt.Errorf("`PasswordHash` must not be empty: %w", core_errors.ErrInvalidArgument)
 	}
 
 	return nil
@@ -98,4 +121,13 @@ func NewUserPatch(fullName Nullable[string], phoneNumber Nullable[string]) UserP
 		FullName:    fullName,
 		PhoneNumber: phoneNumber,
 	}
+}
+
+func (u *User) SetPasswordHash(passwordHash string) error {
+	if passwordHash == "" {
+		return fmt.Errorf("`PasswordHash` must not be empty: %w", core_errors.ErrInvalidArgument)
+	}
+
+	u.PasswordHash = passwordHash
+	return nil
 }

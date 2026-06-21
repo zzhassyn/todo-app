@@ -5,19 +5,21 @@ import (
 	"net/http"
 
 	"github.com/zzhassyn/todo-app/internal/core/domain"
+	core_http_middleware "github.com/zzhassyn/todo-app/internal/core/transport/http/middleware"
 	core_http_server "github.com/zzhassyn/todo-app/internal/core/transport/http/server"
 )
 
 type UsersHTTPHandler struct {
-	usersService UsersService
+	usersService   UsersService
+	authMiddleware core_http_middleware.Middleware
 }
 
+// UsersService is the subset of users_service.UsersService that this HTTP
+// handler needs. Note that user creation is intentionally NOT exposed here:
+// registration is handled exclusively by the auth feature (POST
+// /auth/register), which calls usersService.CreateUser directly after
+// hashing the password.
 type UsersService interface {
-	CreateUser(
-		ctx context.Context,
-		user domain.User,
-	) (domain.User, error)
-
 	GetUsers(
 		ctx context.Context,
 		limit *int,
@@ -41,38 +43,40 @@ type UsersService interface {
 	) (domain.User, error)
 }
 
-func NewUsersHTTPHandler(usersService UsersService) *UsersHTTPHandler {
+func NewUsersHTTPHandler(usersService UsersService, authMiddleware core_http_middleware.Middleware) *UsersHTTPHandler {
 	return &UsersHTTPHandler{
-		usersService: usersService,
+		usersService:   usersService,
+		authMiddleware: authMiddleware,
 	}
 }
 
 func (h *UsersHTTPHandler) Routes() []core_http_server.Route {
+	mw := []core_http_middleware.Middleware{h.authMiddleware}
+
 	return []core_http_server.Route{
 		{
-			Method:  http.MethodPost,
-			Path:    "/users",
-			Handler: h.CreateUser,
+			Method:     http.MethodGet,
+			Path:       "/users",
+			Handler:    h.GetUsers,
+			Middleware: mw,
 		},
 		{
-			Method:  http.MethodGet,
-			Path:    "/users",
-			Handler: h.GetUsers,
+			Method:     http.MethodGet,
+			Path:       "/users/{id}",
+			Handler:    h.GetUser,
+			Middleware: mw,
 		},
 		{
-			Method:  http.MethodGet,
-			Path:    "/users/{id}",
-			Handler: h.GetUser,
+			Method:     http.MethodDelete,
+			Path:       "/users/{id}",
+			Handler:    h.DeleteUser,
+			Middleware: mw,
 		},
 		{
-			Method:  http.MethodDelete,
-			Path:    "/users/{id}",
-			Handler: h.DeleteUser,
-		},
-		{
-			Method:  http.MethodPatch,
-			Path:    "/users/{id}",
-			Handler: h.PatchUser,
+			Method:     http.MethodPatch,
+			Path:       "/users/{id}",
+			Handler:    h.PatchUser,
+			Middleware: mw,
 		},
 	}
 }

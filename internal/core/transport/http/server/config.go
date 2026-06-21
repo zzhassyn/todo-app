@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Addr            string        `envconfig:"ADDR" required:"true"`
 	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
+	AllowedOrigin   string        `envconfig:"ALLOWED_ORIGIN" default:"http://localhost:5173"`
 }
 
 func NewConfig() (Config, error) {
