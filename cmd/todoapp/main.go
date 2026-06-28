@@ -14,6 +14,9 @@ import (
 	core_http_server "github.com/zzhassyn/todo-app/internal/core/transport/http/server"
 	auth_service "github.com/zzhassyn/todo-app/internal/features/auth/service"
 	auth_transport_http "github.com/zzhassyn/todo-app/internal/features/auth/transport/http"
+	folders_postgres_repository "github.com/zzhassyn/todo-app/internal/features/folders/repository/postgres"
+	folders_service "github.com/zzhassyn/todo-app/internal/features/folders/service"
+	folders_transport_http "github.com/zzhassyn/todo-app/internal/features/folders/transport/http"
 	tasks_postgres_repository "github.com/zzhassyn/todo-app/internal/features/tasks/repository/postgres"
 	tasks_service "github.com/zzhassyn/todo-app/internal/features/tasks/service"
 	tasks_transport_http "github.com/zzhassyn/todo-app/internal/features/tasks/transport/http"
@@ -66,9 +69,14 @@ func main() {
 		authConfig.CookieSecure,
 	)
 
+	logger.Debug("initializing feature", zap.String("feature", "folders"))
+	foldersRepository := folders_postgres_repository.NewFoldersRepository(pool)
+	foldersService := folders_service.NewFoldersService(foldersRepository)
+	foldersTransportHTTP := folders_transport_http.NewFoldersHTTPHandler(foldersService, authMiddleware)
+
 	logger.Debug("initializing feature", zap.String("feature", "tasks"))
 	tasksRepository := tasks_postgres_repository.NewTasksRepository(pool)
-	tasksService := tasks_service.NewTasksService(tasksRepository, usersService)
+	tasksService := tasks_service.NewTasksService(tasksRepository, usersService, foldersService)
 	tasksTransportHTTP := tasks_transport_http.NewTasksHTTPHandler(tasksService, authMiddleware)
 
 	logger.Debug("Initializing HTTP server")
@@ -88,6 +96,7 @@ func main() {
 	apiVersionRouter := core_http_server.NewAPIVersionRouter(core_http_server.ApiVErsionV1)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(tasksTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(foldersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(authTransportHTTP.Routes()...)
 
 	authMW := []core_http_middleware.Middleware{authMiddleware}

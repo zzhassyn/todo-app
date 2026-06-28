@@ -10,12 +10,15 @@ import (
 	core_postgres_pool "github.com/zzhassyn/todo-app/internal/core/repository/postgres/pool"
 )
 
+// GetTask returns a task by ID regardless of archival state — archived
+// tasks remain individually retrievable (e.g. to view or unarchive them);
+// only the *listing* endpoint excludes them by default.
 func (r *TasksRepository) GetTask(ctx context.Context, id int) (domain.Task, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.pool.OpTimeout())
 	defer cancel()
 
 	query := `
-		SELECT id, version, title, description, completed, created_at, completed_at, author_user_id
+		SELECT id, version, title, description, completed, created_at, completed_at, author_user_id, priority, due_at, archived_at, folder_id
 		FROM todoapp.tasks
 		WHERE id = $1;
 	`
@@ -33,6 +36,10 @@ func (r *TasksRepository) GetTask(ctx context.Context, id int) (domain.Task, err
 		&taskModel.CreatedAt,
 		&taskModel.CompletedAt,
 		&taskModel.AuthorUserID,
+		&taskModel.Priority,
+		&taskModel.DueAt,
+		&taskModel.ArchivedAt,
+		&taskModel.FolderID,
 	)
 	if err != nil {
 		if errors.Is(err, core_postgres_pool.ErrNoRows) {
@@ -44,5 +51,10 @@ func (r *TasksRepository) GetTask(ctx context.Context, id int) (domain.Task, err
 		return domain.Task{}, fmt.Errorf("scan task row: %w", err)
 	}
 
-	return taskDomainFromModel(taskModel), nil
+	tagsByTaskID, err := r.loadTagsByTaskID(ctx, []int{taskModel.ID})
+	if err != nil {
+		return domain.Task{}, fmt.Errorf("load tags: %w", err)
+	}
+
+	return taskDomainFromModel(taskModel, tagsByTaskID[taskModel.ID]), nil
 }

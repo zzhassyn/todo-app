@@ -12,9 +12,14 @@ import (
 func (s *TasksService) CreateTask(
 	ctx context.Context,
 	task domain.Task,
+	tagNames []string,
 ) (domain.Task, error) {
 	if err := task.Validate(); err != nil {
 		return domain.Task{}, fmt.Errorf("validate task domain: %w", err)
+	}
+
+	if err := validateTagNames(tagNames); err != nil {
+		return domain.Task{}, fmt.Errorf("validate tags: %w", err)
 	}
 
 	if _, err := s.usersChecker.GetUser(ctx, task.AuthorUserID); err != nil {
@@ -27,7 +32,11 @@ func (s *TasksService) CreateTask(
 		return domain.Task{}, fmt.Errorf("check author user existence: %w", err)
 	}
 
-	task, err := s.tasksRepository.CreateTask(ctx, task)
+	if err := s.checkFolderOwnership(ctx, task.FolderID, task.AuthorUserID); err != nil {
+		return domain.Task{}, err
+	}
+
+	task, err := s.tasksRepository.CreateTask(ctx, task, tagNames)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("create task in repository: %w", err)
 	}

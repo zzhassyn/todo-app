@@ -7,12 +7,22 @@ import (
 	"github.com/zzhassyn/todo-app/internal/core/domain"
 )
 
+// tagNames follows the same nil-vs-empty convention as the repository
+// layer: nil means "leave tags untouched", a non-nil (possibly empty)
+// slice replaces the task's tag set.
 func (s *TasksService) PatchTask(
 	ctx context.Context,
 	id int,
 	requestingUserID int,
 	patch domain.TaskPatch,
+	tagNames []string,
 ) (domain.Task, error) {
+	if tagNames != nil {
+		if err := validateTagNames(tagNames); err != nil {
+			return domain.Task{}, fmt.Errorf("validate tags: %w", err)
+		}
+	}
+
 	task, err := s.tasksRepository.GetTask(ctx, id)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("get task: %w", err)
@@ -26,7 +36,11 @@ func (s *TasksService) PatchTask(
 		return domain.Task{}, fmt.Errorf("apply task patch: %w", err)
 	}
 
-	patchedTask, err := s.tasksRepository.PatchTask(ctx, id, task)
+	if err := s.checkFolderOwnership(ctx, task.FolderID, requestingUserID); err != nil {
+		return domain.Task{}, err
+	}
+
+	patchedTask, err := s.tasksRepository.PatchTask(ctx, id, task, tagNames)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("patch task: %w", err)
 	}

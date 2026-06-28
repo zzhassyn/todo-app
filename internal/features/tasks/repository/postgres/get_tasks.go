@@ -21,16 +21,51 @@ func (r *TasksRepository) GetTasks(
 	var (
 		conditions []string
 		args       []any
+		joins      []string
 	)
 
 	if filter.AuthorUserID != nil {
 		args = append(args, *filter.AuthorUserID)
-		conditions = append(conditions, fmt.Sprintf("author_user_id = $%d", len(args)))
+		conditions = append(conditions, fmt.Sprintf("t.author_user_id = $%d", len(args)))
 	}
 
 	if filter.Completed != nil {
 		args = append(args, *filter.Completed)
-		conditions = append(conditions, fmt.Sprintf("completed = $%d", len(args)))
+		conditions = append(conditions, fmt.Sprintf("t.completed = $%d", len(args)))
+	}
+
+	// Archived semantics: nil or false => only non-archived tasks (the
+	// "normal" view); true => only archived tasks (the "archive" view).
+	// There is intentionally no way to request "both" — callers wanting
+	// that should issue two requests, since mixing them is rarely useful
+	// and would complicate the default behavior.
+	if filter.Archived != nil && *filter.Archived {
+		conditions = append(conditions, "t.archived_at IS NOT NULL")
+	} else {
+		conditions = append(conditions, "t.archived_at IS NULL")
+	}
+
+	if filter.Priority != nil {
+		args = append(args, string(*filter.Priority))
+		conditions = append(conditions, fmt.Sprintf("t.priority = $%d", len(args)))
+	}
+
+	if filter.Tag != nil {
+		joins = append(joins, "JOIN todoapp.task_tags ft ON ft.task_id = t.id JOIN todoapp.tags tg ON tg.id = ft.tag_id")
+		args = append(args, *filter.Tag)
+		conditions = append(conditions, fmt.Sprintf("tg.name = $%d", len(args)))
+	}
+
+	// Folder semantics: NoFolder=true means "only unfiled tasks" (the
+	// default buffer view); FolderID!=nil means "only tasks in this
+	// folder". Both unset (the zero TasksFilter) means "don't filter by
+	// folder at all" — neither is mutually exclusive at the type level,
+	// but the service layer only ever sets one of them at a time.
+	if filter.NoFolder {
+		conditions = append(conditions, "t.folder_id IS NULL")
+	} else if filter.FolderID != nil {
+		args = append(args, *filter.FolderID)
+		conditions = append(conditions, fmt.Sprintf("t.folder_id = $%d", len(args)))
 	}
 
 	whereClause := ""
@@ -45,12 +80,14 @@ func (r *TasksRepository) GetTasks(
 	offsetPlaceholder := fmt.Sprintf("$%d", len(args))
 
 	query := fmt.Sprintf(`
-		SELECT id, version, title, description, completed, created_at, completed_at, author_user_id
-		FROM todoapp.tasks
+		SELECT DISTINCT t.id, t.version, t.title, t.description, t.completed, t.created_at,
+		       t.completed_at, t.author_user_id, t.priority, t.due_at, t.archived_at, t.folder_id
+		FROM todoapp.tasks t
 		%s
-		ORDER BY id ASC
+		%s
+		ORDER BY t.id ASC
 		LIMIT %s OFFSET %s;
-	`, whereClause, limitPlaceholder, offsetPlaceholder)
+	`, strings.Join(joins, "\n"), whereClause, limitPlaceholder, offsetPlaceholder)
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
@@ -70,6 +107,10 @@ func (r *TasksRepository) GetTasks(
 			&taskModel.CreatedAt,
 			&taskModel.CompletedAt,
 			&taskModel.AuthorUserID,
+			&taskModel.Priority,
+			&taskModel.DueAt,
+			&taskModel.ArchivedAt,
+			&taskModel.FolderID,
 		); err != nil {
 			return nil, fmt.Errorf("scan tasks: %w", err)
 		}
@@ -79,5 +120,15 @@ func (r *TasksRepository) GetTasks(
 		return nil, fmt.Errorf("next rows: %w", err)
 	}
 
-	return taskDomainsFromModels(taskModels), nil
+	taskIDs := make([]int, len(taskModels))
+	for i, tm := range taskModels {
+		taskIDs[i] = tm.ID
+	}
+
+	tagsByTaskID, err := r.loadTagsByTaskID(ctx, taskIDs)
+	if err != nil {
+		return nil, fmt.Errorf("load tags: %w", err)
+	}
+
+	return taskDomainsFromModels(taskModels, tagsByTaskID), nil
 }

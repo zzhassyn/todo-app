@@ -19,6 +19,7 @@ type TasksService interface {
 	CreateTask(
 		ctx context.Context,
 		task domain.Task,
+		tagNames []string,
 	) (domain.Task, error)
 
 	GetTasks(
@@ -34,17 +35,26 @@ type TasksService interface {
 		requestingUserID int,
 	) (domain.Task, error)
 
-	DeleteTask(
+	// ArchiveTask soft-deletes a task. There is no hard-delete endpoint —
+	// archiving is the only way to remove a task from the default view.
+	ArchiveTask(
 		ctx context.Context,
 		id int,
 		requestingUserID int,
-	) error
+	) (domain.Task, error)
+
+	UnarchiveTask(
+		ctx context.Context,
+		id int,
+		requestingUserID int,
+	) (domain.Task, error)
 
 	PatchTask(
 		ctx context.Context,
 		id int,
 		requestingUserID int,
 		patch domain.TaskPatch,
+		tagNames []string,
 	) (domain.Task, error)
 
 	CompleteTask(
@@ -58,6 +68,17 @@ type TasksService interface {
 		id int,
 		requestingUserID int,
 	) (domain.Task, error)
+
+	// PermanentlyDeleteTask hard-deletes a task. Only succeeds if the task
+	// is already archived (see tasks_service.PermanentlyDeleteTask) — it
+	// is reachable exclusively from the archive view in the UI.
+	PermanentlyDeleteTask(
+		ctx context.Context,
+		id int,
+		requestingUserID int,
+	) error
+
+	GetTags(ctx context.Context) ([]domain.Tag, error)
 }
 
 func NewTasksHTTPHandler(tasksService TasksService, authMiddleware core_http_middleware.Middleware) *TasksHTTPHandler {
@@ -92,9 +113,10 @@ func (h *TasksHTTPHandler) Routes() []core_http_server.Route {
 			Middleware: mw,
 		},
 		{
+			// DELETE archives rather than hard-deletes — see ArchiveTask.
 			Method:     http.MethodDelete,
 			Path:       "/tasks/{id}",
-			Handler:    h.DeleteTask,
+			Handler:    h.ArchiveTask,
 			Middleware: mw,
 		},
 		{
@@ -113,6 +135,32 @@ func (h *TasksHTTPHandler) Routes() []core_http_server.Route {
 			Method:     http.MethodPost,
 			Path:       "/tasks/{id}/uncomplete",
 			Handler:    h.UncompleteTask,
+			Middleware: mw,
+		},
+		{
+			Method:     http.MethodPost,
+			Path:       "/tasks/{id}/archive",
+			Handler:    h.ArchiveTask,
+			Middleware: mw,
+		},
+		{
+			Method:     http.MethodPost,
+			Path:       "/tasks/{id}/unarchive",
+			Handler:    h.UnarchiveTask,
+			Middleware: mw,
+		},
+		{
+			// Hard delete. Only succeeds for already-archived tasks — see
+			// tasks_service.PermanentlyDeleteTask.
+			Method:     http.MethodDelete,
+			Path:       "/tasks/{id}/permanent",
+			Handler:    h.PermanentlyDeleteTask,
+			Middleware: mw,
+		},
+		{
+			Method:     http.MethodGet,
+			Path:       "/tags",
+			Handler:    h.GetTags,
 			Middleware: mw,
 		},
 	}

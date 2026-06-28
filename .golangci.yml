@@ -1,0 +1,27 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    staticcheck:
+      checks:
+        - all
+        # ST1003 flags package names like core_errors/users_service as not
+        # idiomatic Go (it wants CamelCase). This project deliberately uses
+        # snake_case, underscore-prefixed package names so the
+        # feature/layer a package belongs to is readable at the import
+        # site (e.g. core_errors, users_service, tasks_transport_http).
+        # That is a project-wide, intentional convention, not an
+        # oversight, so the check is turned off rather than suppressed
+        # file-by-file.
+        - "-ST1003"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

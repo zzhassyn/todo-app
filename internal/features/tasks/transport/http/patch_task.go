@@ -3,7 +3,9 @@ package tasks_transport_http
 import (
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/google/uuid"
 	core_auth "github.com/zzhassyn/todo-app/internal/core/auth"
 	"github.com/zzhassyn/todo-app/internal/core/domain"
 	core_errors "github.com/zzhassyn/todo-app/internal/core/errors"
@@ -15,8 +17,19 @@ import (
 )
 
 type PatchTaskRequest struct {
-	Title       core_http_types.Nullable[string] `json:"title"`
-	Description core_http_types.Nullable[string] `json:"description"`
+	Title       core_http_types.Nullable[string]    `json:"title"`
+	Description core_http_types.Nullable[string]    `json:"description"`
+	Priority    core_http_types.Nullable[string]    `json:"priority"`
+	DueAt       core_http_types.Nullable[time.Time] `json:"due_at"`
+	// Tags follows the same nil-vs-empty convention used throughout the
+	// tags feature: omitted or JSON null => leave tags untouched; "tags":
+	// [] => clear all tags; "tags": [...] => replace with this set.
+	Tags []string `json:"tags" validate:"omitempty,max=20,dive,min=1,max=50"`
+	// FolderID follows the same Nullable convention as DueAt: omitted =>
+	// leave the task's folder untouched; explicit JSON null => move the
+	// task out of any folder (back to the unfiled buffer); a UUID =>
+	// move the task into that folder.
+	FolderID core_http_types.Nullable[uuid.UUID] `json:"folder_id"`
 }
 
 func (r *PatchTaskRequest) Validate() error {
@@ -36,6 +49,21 @@ func (r *PatchTaskRequest) Validate() error {
 		if descriptionLen < 1 || descriptionLen > 1000 {
 			return fmt.Errorf("'Description' must be between 1 and 1000 characters long")
 		}
+	}
+
+	if r.Priority.Set {
+		if r.Priority.Value == nil {
+			return fmt.Errorf("`Priority` cannot be null")
+		}
+		switch *r.Priority.Value {
+		case "low", "medium", "high":
+		default:
+			return fmt.Errorf("'Priority' must be one of: low, medium, high")
+		}
+	}
+
+	if r.FolderID.Set && r.FolderID.Value != nil && *r.FolderID.Value == uuid.Nil {
+		return fmt.Errorf("`FolderID` can't be the nil UUID")
 	}
 
 	return nil
@@ -71,7 +99,7 @@ func (h *TasksHTTPHandler) PatchTask(w http.ResponseWriter, r *http.Request) {
 
 	taskPatch := taskPatchFromRequest(request)
 
-	taskDomain, err := h.tasksService.PatchTask(ctx, taskID, claims.UserID, taskPatch)
+	taskDomain, err := h.tasksService.PatchTask(ctx, taskID, claims.UserID, taskPatch, request.Tags)
 	if err != nil {
 		responseHandler.ErrorResponse(err, "failed to patch task")
 		return
@@ -83,8 +111,20 @@ func (h *TasksHTTPHandler) PatchTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func taskPatchFromRequest(request PatchTaskRequest) domain.TaskPatch {
+	var priority domain.Nullable[domain.Priority]
+	if request.Priority.Set {
+		priority.Set = true
+		if request.Priority.Value != nil {
+			p := domain.Priority(*request.Priority.Value)
+			priority.Value = &p
+		}
+	}
+
 	return domain.NewTaskPatch(
 		request.Title.ToDomain(),
 		request.Description.ToDomain(),
+		priority,
+		request.DueAt.ToDomain(),
+		request.FolderID.ToDomain(),
 	)
 }

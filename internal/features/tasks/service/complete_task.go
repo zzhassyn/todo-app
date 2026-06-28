@@ -22,7 +22,7 @@ func (s *TasksService) CompleteTask(ctx context.Context, id int, requestingUserI
 		return domain.Task{}, fmt.Errorf("complete task: %w", err)
 	}
 
-	completedTask, err := s.tasksRepository.PatchTask(ctx, id, task)
+	completedTask, err := s.tasksRepository.PatchTask(ctx, id, task, nil)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("patch task: %w", err)
 	}

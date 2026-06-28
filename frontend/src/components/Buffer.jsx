@@ -1,11 +1,24 @@
 import BufferLine from "./BufferLine";
 import Composer from "./Composer";
 
-export default function Buffer({ tasks, loading, filter, onAdd, onToggle, onDelete, onEdit }) {
+export default function Buffer({
+  view,
+  title,
+  emptyHint,
+  tasks,
+  loading,
+  onAdd,
+  onToggle,
+  onArchive,
+  onUnarchive,
+  onEdit,
+}) {
+  const isArchiveView = view.type === "system" && view.key === "archive";
+
   return (
     <div className="buffer">
       <div className="buffer__titlebar">
-        <span className="buffer__filename">buffer.todo</span>
+        <span className="buffer__filename">{title}</span>
         <span className="buffer__modified" aria-hidden={tasks.length === 0}>
           {tasks.length > 0 ? "[+]" : ""}
         </span>
@@ -13,30 +26,32 @@ export default function Buffer({ tasks, loading, filter, onAdd, onToggle, onDele
 
       <div className="buffer__body">
         {loading ? (
-          <div className="buffer__empty">читаю буфер…</div>
+          <div className="buffer__empty">читаю…</div>
         ) : tasks.length === 0 ? (
-          <div className="buffer__empty">
-            {filter === "done"
-              ? "ничего не выполнено. пока."
-              : filter === "active"
-              ? "активных задач нет — всё сделано."
-              : "буфер пуст. начните печатать ниже."}
-          </div>
+          <div className="buffer__empty">{emptyHint}</div>
         ) : (
           tasks.map((task, i) => (
             <BufferLine
               key={task.id}
               task={task}
               index={i}
+              mode={isArchiveView ? "archive" : "normal"}
               onToggle={onToggle}
-              onDelete={onDelete}
+              onArchive={onArchive}
+              onUnarchive={onUnarchive}
               onEdit={onEdit}
             />
           ))
         )}
 
-        {filter === "all" && (
-          <Composer onAdd={onAdd} nextIndex={tasks.length + 1} disabled={loading} />
+        {!isArchiveView && (
+          <Composer
+            onAdd={onAdd}
+            nextIndex={tasks.length + 1}
+            disabled={loading}
+            folderId={view.type === "folder" ? view.id : undefined}
+            folderTitle={view.type === "folder" ? view.title : undefined}
+          />
         )}
 
         <EndOfBuffer />

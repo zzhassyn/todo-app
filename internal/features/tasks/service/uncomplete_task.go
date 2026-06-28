@@ -21,7 +21,7 @@ func (s *TasksService) UncompleteTask(ctx context.Context, id int, requestingUse
 		return domain.Task{}, fmt.Errorf("uncomplete task: %w", err)
 	}
 
-	uncompletedTask, err := s.tasksRepository.PatchTask(ctx, id, task)
+	uncompletedTask, err := s.tasksRepository.PatchTask(ctx, id, task, nil)
 	if err != nil {
 		return domain.Task{}, fmt.Errorf("patch task: %w", err)
 	}

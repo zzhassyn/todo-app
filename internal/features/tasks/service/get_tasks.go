@@ -32,6 +32,18 @@ func (s *TasksService) GetTasks(
 		)
 	}
 
+	if filter.Priority != nil {
+		if err := filter.Priority.Validate(); err != nil {
+			return nil, fmt.Errorf("priority filter: %w", err)
+		}
+	}
+
+	if filter.FolderID != nil && filter.AuthorUserID != nil {
+		if err := s.checkFolderOwnership(ctx, filter.FolderID, *filter.AuthorUserID); err != nil {
+			return nil, err
+		}
+	}
+
 	tasks, err := s.tasksRepository.GetTasks(ctx, filter, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get tasks from repository: %w", err)
