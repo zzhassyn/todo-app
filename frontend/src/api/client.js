@@ -67,6 +67,16 @@ export const api = {
   completeTask: (id) => request(`/tasks/${id}/complete`, { method: "POST" }),
   uncompleteTask: (id) => request(`/tasks/${id}/uncomplete`, { method: "POST" }),
 
+  createSubtask: (taskId, payload) =>
+    request(`/tasks/${taskId}/subtasks`, { method: "POST", body: JSON.stringify(payload) }),
+  patchSubtask: (id, payload) =>
+    request(`/subtasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  completeSubtask: (id) => request(`/subtasks/${id}/complete`, { method: "POST" }),
+  uncompleteSubtask: (id) => request(`/subtasks/${id}/uncomplete`, { method: "POST" }),
+  deleteSubtask: (id) => request(`/subtasks/${id}`, { method: "DELETE" }),
+  reorderSubtasks: (taskId, subtaskIds) =>
+    request(`/tasks/${taskId}/subtasks/reorder`, { method: "POST", body: JSON.stringify({ subtask_ids: subtaskIds }) }),
+
   listTags: () => request("/tags"),
 
   listFolders: () => request("/folders"),

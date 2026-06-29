@@ -27,6 +27,28 @@ type TagModel struct {
 	Name string
 }
 
+type SubtaskModel struct {
+	ID          int
+	TaskID      int
+	Title       string
+	CompletedAt *time.Time
+	Position    int
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+func subtaskDomainFromModel(model SubtaskModel) domain.Subtask {
+	return domain.NewSubtask(domain.SubtaskParams{
+		ID:          model.ID,
+		TaskID:      model.TaskID,
+		Title:       model.Title,
+		CompletedAt: model.CompletedAt,
+		Position:    model.Position,
+		CreatedAt:   model.CreatedAt,
+		UpdatedAt:   model.UpdatedAt,
+	})
+}
+
 func tagDomainFromModel(tag TagModel) domain.Tag {
 	return domain.NewTag(tag.ID, tag.Name)
 }
@@ -40,10 +62,10 @@ func tagDomainsFromModels(tags []TagModel) []domain.Tag {
 }
 
 // taskDomainFromModel converts a row plus its already-loaded tags into a
-// domain.Task. Tags are fetched separately (see get_task.go/get_tasks.go)
+// domain.Task. Tags and Subtasks are fetched separately (see get_task.go/get_tasks.go)
 // rather than via a SQL-side JSON aggregate, keeping the query simple and
 // the row-scanning code uniform across all task queries.
-func taskDomainFromModel(task TaskModel, tags []domain.Tag) domain.Task {
+func taskDomainFromModel(task TaskModel, tags []domain.Tag, subtasks []domain.Subtask) domain.Task {
 	return domain.NewTask(domain.TaskParams{
 		ID:           task.ID,
 		Version:      task.Version,
@@ -58,15 +80,16 @@ func taskDomainFromModel(task TaskModel, tags []domain.Tag) domain.Task {
 		ArchivedAt:   task.ArchivedAt,
 		Tags:         tags,
 		FolderID:     task.FolderID,
+		Subtasks:     subtasks,
 	})
 }
 
 // taskDomainsFromModels converts task rows into domain.Tasks, attaching
-// tags from tagsByTaskID (keyed by task ID; missing entries mean "no tags").
-func taskDomainsFromModels(tasks []TaskModel, tagsByTaskID map[int][]domain.Tag) []domain.Task {
+// tags and subtasks from maps keyed by task ID.
+func taskDomainsFromModels(tasks []TaskModel, tagsByTaskID map[int][]domain.Tag, subtasksByTaskID map[int][]domain.Subtask) []domain.Task {
 	taskDomains := make([]domain.Task, len(tasks))
 	for i, task := range tasks {
-		taskDomains[i] = taskDomainFromModel(task, tagsByTaskID[task.ID])
+		taskDomains[i] = taskDomainFromModel(task, tagsByTaskID[task.ID], subtasksByTaskID[task.ID])
 	}
 	return taskDomains
 }

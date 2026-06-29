@@ -4,6 +4,7 @@ import PriorityPicker from "./PriorityPicker";
 import TagPicker from "./TagPicker";
 import PriorityDot from "./PriorityDot";
 import TagBadge from "./TagBadge";
+import SubtaskList from "./SubtaskList";
 
 const PRIORITY_LABEL = { low: "Низкий", medium: "Средний", high: "Высокий" };
 
@@ -98,6 +99,17 @@ export default function TaskDetail({ task, allTags, onClose, onPatch, onArchive,
           maxLength={1000}
           disabled={isArchived}
         />
+
+        <div className="taskdetail__field taskdetail__field--subtasks">
+          <span className="taskdetail__field-label">Чек-лист</span>
+          <div className="taskdetail__field-control-wrap" style={{ display: 'block' }}>
+            <SubtaskList
+              taskId={task.id}
+              initialSubtasks={task.subtasks || []}
+              disabled={isArchived}
+            />
+          </div>
+        </div>
 
         <div className="taskdetail__field">
           <span className="taskdetail__field-label">Приоритет</span>

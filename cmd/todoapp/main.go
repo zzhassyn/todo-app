@@ -20,6 +20,9 @@ import (
 	tasks_postgres_repository "github.com/zzhassyn/todo-app/internal/features/tasks/repository/postgres"
 	tasks_service "github.com/zzhassyn/todo-app/internal/features/tasks/service"
 	tasks_transport_http "github.com/zzhassyn/todo-app/internal/features/tasks/transport/http"
+	subtasks_postgres_repository "github.com/zzhassyn/todo-app/internal/features/subtasks/repository/postgres"
+	subtasks_service "github.com/zzhassyn/todo-app/internal/features/subtasks/service"
+	subtasks_transport_http "github.com/zzhassyn/todo-app/internal/features/subtasks/transport/http"
 	users_postgres_repository "github.com/zzhassyn/todo-app/internal/features/users/repository/postgres"
 	users_service "github.com/zzhassyn/todo-app/internal/features/users/service"
 	users_transport_http "github.com/zzhassyn/todo-app/internal/features/users/transport/http"
@@ -79,6 +82,11 @@ func main() {
 	tasksService := tasks_service.NewTasksService(tasksRepository, usersService, foldersService)
 	tasksTransportHTTP := tasks_transport_http.NewTasksHTTPHandler(tasksService, authMiddleware)
 
+	logger.Debug("initializing feature", zap.String("feature", "subtasks"))
+	subtasksRepository := subtasks_postgres_repository.NewSubtasksRepository(pool)
+	subtasksService := subtasks_service.NewSubtasksService(subtasksRepository, tasksService)
+	subtasksTransportHTTP := subtasks_transport_http.NewSubtasksHTTPHandler(subtasksService, authMiddleware)
+
 	logger.Debug("Initializing HTTP server")
 
 	httpServerConfig := core_http_server.NewConfigMust()
@@ -96,6 +104,7 @@ func main() {
 	apiVersionRouter := core_http_server.NewAPIVersionRouter(core_http_server.ApiVErsionV1)
 	apiVersionRouter.RegisterRoutes(usersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(tasksTransportHTTP.Routes()...)
+	apiVersionRouter.RegisterRoutes(subtasksTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(foldersTransportHTTP.Routes()...)
 	apiVersionRouter.RegisterRoutes(authTransportHTTP.Routes()...)
 

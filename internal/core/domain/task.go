@@ -22,6 +22,7 @@ type Task struct {
 	ArchivedAt   *time.Time
 	Tags         []Tag
 	FolderID     *uuid.UUID
+	Subtasks     []Subtask
 }
 
 // TaskParams groups the fields needed to construct a Task. The struct
@@ -43,6 +44,7 @@ type TaskParams struct {
 	ArchivedAt   *time.Time
 	Tags         []Tag
 	FolderID     *uuid.UUID
+	Subtasks     []Subtask
 }
 
 func NewTask(p TaskParams) Task {
@@ -60,6 +62,7 @@ func NewTask(p TaskParams) Task {
 		ArchivedAt:   p.ArchivedAt,
 		Tags:         p.Tags,
 		FolderID:     p.FolderID,
+		Subtasks:     p.Subtasks,
 	}
 }
 
@@ -85,6 +88,7 @@ func NewTaskUninitialized(
 		ArchivedAt:   nil,
 		Tags:         nil,
 		FolderID:     folderID,
+		Subtasks:     nil,
 	})
 }
 

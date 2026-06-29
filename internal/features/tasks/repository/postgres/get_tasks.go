@@ -130,5 +130,10 @@ func (r *TasksRepository) GetTasks(
 		return nil, fmt.Errorf("load tags: %w", err)
 	}
 
-	return taskDomainsFromModels(taskModels, tagsByTaskID), nil
+	subtasksByTaskID, err := r.loadSubtasksByTaskID(ctx, taskIDs)
+	if err != nil {
+		return nil, fmt.Errorf("load subtasks: %w", err)
+	}
+
+	return taskDomainsFromModels(taskModels, tagsByTaskID, subtasksByTaskID), nil
 }
