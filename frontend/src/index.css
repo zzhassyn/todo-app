@@ -1,45 +1,131 @@
 /* ============================================================
    design tokens
    ------------------------------------------------------------
-   aesthetic: a code editor's buffer, not a chat app and not a
-   dashboard. tasks are lines in a file; finishing one is a diff.
-   palette is warm/earthen (gruvbox-adjacent) rather than the
-   default near-black + neon-accent combination.
+   A calm, professional task manager. Light is the default
+   working surface (not a marketing-page cream); dark is a full
+   parallel theme, not an afterthought. One accent color
+   (terracotta) carries all emphasis — selection, primary
+   actions, focus. Priority and status communicate through small
+   dots and hue, not through saturated blocks of color.
    ============================================================ */
 :root {
-  /* surfaces */
-  --bg: #1d2021;
-  --bg-raised: #242730;
-  --bg-gutter: #181a1b;
-  --panel: #282828;
-  --panel-line: #32302f;
-  --border: #3c3836;
-  --border-soft: #2d2b29;
+  /* ---- surfaces ---- */
+  --surface-sunken: #f4f5f7; /* page background, behind the sidebar */
+  --surface-base: #ffffff; /* list / main content background */
+  --surface-raised: #ffffff; /* cards, popovers — distinguished by shadow, not tint, in light mode */
+  --surface-hover: #f1f2f4; /* row hover */
+  --surface-selected: #fdf1ed; /* selected row / active nav item, tinted by accent */
+  --surface-overlay: rgba(15, 18, 22, 0.4); /* scrim behind popovers/mobile detail */
 
-  /* text */
-  --fg: #ebdbb2;
-  --fg-dim: #d5c4a1;
-  --fg-muted: #a89984;
-  --fg-faint: #6f6259;
+  /* ---- borders ---- */
+  --border-subtle: #ebecef;
+  --border-default: #e1e3e8;
+  --border-strong: #c7cad1;
 
-  /* accents */
-  --accent-add: #b8bb26; /* new / active task, "+" diff marker */
-  --accent-add-dim: #98971a;
-  --accent-done: #83a598; /* completed task, muted blue-teal */
-  --accent-warn: #fe8019; /* focus / caret / primary action */
-  --accent-warn-dim: #d65d0e;
-  --accent-danger: #fb4934;
-  --accent-danger-dim: #cc241d;
+  /* ---- text ---- */
+  --text-primary: #1a1d23;
+  --text-secondary: #5b6068;
+  --text-tertiary: #8b8f97;
+  --text-on-accent: #ffffff;
+  --text-disabled: #c2c5cb;
 
-  /* type */
-  --font-mono: "Fragment Mono", ui-monospace, "JetBrains Mono", monospace;
-  --font-display: "Newsreader", "Iowan Old Style", serif;
+  /* ---- accent (terracotta) — the only saturated color used for UI state ---- */
+  --accent: #d96b4a;
+  --accent-hover: #c25a3a;
+  --accent-active: #ab4d30;
+  --accent-subtle: #fbe9e2; /* badge/selection backgrounds */
+  --accent-subtle-border: #f3cdba;
 
-  /* metrics */
-  --radius: 3px;
-  --gutter-width: 3.4rem;
-  --max-width: 760px;
-  --line-h: 2.15rem;
+  /* ---- semantic (status only — not used for decoration) ---- */
+  --danger: #d64545;
+  --danger-subtle: #fdeaea;
+  --warning: #c98a1a;
+  --warning-subtle: #fdf3e1;
+  --success: #2f9e5b;
+  --success-subtle: #e7f6ed;
+
+  /* priority dots: distinct from the semantic trio above so a designer
+     could retune one set without affecting the other, even though the
+     current values happen to align */
+  --priority-low: #2f9e5b;
+  --priority-medium: #c98a1a;
+  --priority-high: #d64545;
+
+  /* ---- elevation ---- */
+  --shadow-sm: 0 1px 2px rgba(20, 22, 26, 0.06), 0 1px 1px rgba(20, 22, 26, 0.04);
+  --shadow-md: 0 4px 12px rgba(20, 22, 26, 0.08), 0 2px 4px rgba(20, 22, 26, 0.05);
+  --shadow-lg: 0 12px 32px rgba(20, 22, 26, 0.14), 0 4px 8px rgba(20, 22, 26, 0.06);
+
+  /* ---- shape ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* ---- spacing scale ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* ---- motion ---- */
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+
+  /* ---- type ---- */
+  --font-ui: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ---- layout ---- */
+  --sidebar-width: 248px;
+  --detail-width: 392px;
+  --topbar-height: 56px;
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --surface-sunken: #15171b;
+  --surface-base: #1b1e23;
+  --surface-raised: #23262c;
+  --surface-hover: #282b32;
+  --surface-selected: #332620;
+  --surface-overlay: rgba(0, 0, 0, 0.55);
+
+  --border-subtle: #2a2d33;
+  --border-default: #34373e;
+  --border-strong: #454850;
+
+  --text-primary: #eef0f3;
+  --text-secondary: #a3a8b1;
+  --text-tertiary: #6e7280;
+  --text-on-accent: #ffffff;
+  --text-disabled: #454850;
+
+  --accent: #e3805e;
+  --accent-hover: #ec9376;
+  --accent-active: #f0a489;
+  --accent-subtle: #3a2820;
+  --accent-subtle-border: #5a3a2c;
+
+  --danger: #e57373;
+  --danger-subtle: #3a2323;
+  --warning: #d9a441;
+  --warning-subtle: #3a3120;
+  --success: #5cba84;
+  --success-subtle: #1f3327;
+
+  --priority-low: #5cba84;
+  --priority-medium: #d9a441;
+  --priority-high: #e57373;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.38), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5), 0 4px 10px rgba(0, 0, 0, 0.35);
 
   color-scheme: dark;
 }
@@ -55,25 +141,14 @@ body {
 }
 
 body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font-mono);
-  font-size: 15px;
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  background-image: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.18) 0%,
-      transparent 8%
-    ),
-    repeating-linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent var(--line-h)
-    );
   min-height: 100vh;
+  transition: background var(--duration-base) var(--ease);
 }
 
 #root {
@@ -97,23 +172,21 @@ textarea {
 }
 
 ::selection {
-  background: var(--accent-warn-dim);
-  color: var(--bg);
+  background: var(--accent-subtle-border);
 }
 
 a {
-  color: var(--accent-done);
+  color: var(--accent);
   text-decoration: none;
 }
 a:hover {
   text-decoration: underline;
 }
 
-/* visible focus ring everywhere, no exceptions */
 :focus-visible {
-  outline: 1.5px solid var(--accent-warn);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar {
@@ -121,14 +194,13 @@ a:hover {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--border-strong);
   border-radius: 6px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-faint);
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 
 @media (prefers-reduced-motion: reduce) {

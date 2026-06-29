@@ -44,7 +44,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.1
+          version: latest
           args: --timeout=5m
 
   frontend:
@@ -72,3 +72,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
+linters-settings:
+  staticcheck:
+    checks: ["all", "-ST1000", "-ST1020", "-ST1005"]

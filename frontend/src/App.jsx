@@ -1,37 +1,42 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { api, ApiError } from "./api/client";
+import { isToday } from "./utils/date";
+import { useTheme } from "./utils/useTheme";
 import AuthScreen from "./components/AuthScreen";
 import Sidebar from "./components/Sidebar";
-import Buffer from "./components/Buffer";
-import StatusBar from "./components/StatusBar";
+import TaskList from "./components/TaskList";
+import TaskDetail from "./components/TaskDetail";
 import Toast from "./components/Toast";
 import "./app.css";
 
 const SYSTEM_LABELS = {
-  all: "buffer.todo",
-  active: "active.todo",
-  done: "done.todo",
-  archive: "archive.todo",
+  all: "Все задачи",
+  today: "Сегодня",
+  active: "Активные",
+  done: "Выполненные",
+  archive: "Архив",
 };
 
 const SYSTEM_EMPTY_HINTS = {
-  all: "буфер пуст. начните печатать ниже.",
-  active: "активных задач нет — всё сделано.",
-  done: "ничего не выполнено. пока.",
-  archive: "архив пуст.",
+  all: "Задач пока нет. Добавьте первую ниже.",
+  today: "На сегодня ничего не запланировано.",
+  active: "Активных задач нет — всё сделано.",
+  done: "Пока ничего не выполнено.",
+  archive: "Архив пуст.",
 };
 
 function TodoApp() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   // `view` is the single source of truth for "what is currently shown":
   // either one of the system filters, or a specific folder. Keeping it as
   // one discriminated value (rather than separate `filter` + `folderId`
-  // state) means there's exactly one place that decides what's selected,
-  // so the sidebar's highlighted item and the buffer's contents can never
-  // disagree with each other.
+  // state) means the sidebar's highlighted item and the list's contents
+  // can never disagree with each other.
   const [view, setView] = useState({ type: "system", key: "all" });
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
 
   const [tasks, setTasks] = useState([]);
   const [archivedTasks, setArchivedTasks] = useState([]);
@@ -42,14 +47,15 @@ function TodoApp() {
 
   const [folders, setFolders] = useState([]);
   const [foldersLoading, setFoldersLoading] = useState(true);
+  const [tags, setTags] = useState([]);
 
   const reportError = useCallback((err, fallback) => {
     setError(err instanceof ApiError ? err.message : fallback);
   }, []);
 
-  // Unfiled tasks (used by the "все"/"активные"/"выполнено" system
-  // filters) are fetched once up front; the archive and individual
-  // folders are fetched lazily, only when first viewed.
+  // Unfiled tasks (used by all the system filters except "архив") are
+  // fetched once up front; the archive and individual folders are fetched
+  // lazily, only when first viewed.
   const fetchTasks = useCallback(async (signal) => {
     setLoading(true);
     try {
@@ -58,7 +64,7 @@ function TodoApp() {
       setTasks(result ?? []);
     } catch (err) {
       if (signal?.aborted) return;
-      reportError(err, "не удалось загрузить задачи");
+      reportError(err, "Не удалось загрузить задачи");
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -85,7 +91,7 @@ function TodoApp() {
         setFolders(result ?? []);
       } catch (err) {
         if (controller.signal.aborted) return;
-        reportError(err, "не удалось загрузить списки");
+        reportError(err, "Не удалось загрузить списки");
       } finally {
         if (!controller.signal.aborted) setFoldersLoading(false);
       }
@@ -94,6 +100,24 @@ function TodoApp() {
     loadFolders();
     return () => controller.abort();
   }, [reportError]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadTags() {
+      try {
+        const result = await api.listTags();
+        if (controller.signal.aborted) return;
+        setTags(result ?? []);
+      } catch {
+        // Tags are a convenience (autocomplete) feature; a failed load
+        // shouldn't block the rest of the app or show an error toast.
+      }
+    }
+
+    loadTags();
+    return () => controller.abort();
+  }, []);
 
   // The archive tab is fetched lazily on first visit rather than upfront,
   // since most sessions never open it.
@@ -111,7 +135,7 @@ function TodoApp() {
         setArchiveLoaded(true);
       } catch (err) {
         if (controller.signal.aborted) return;
-        reportError(err, "не удалось загрузить архив");
+        reportError(err, "Не удалось загрузить архив");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -137,7 +161,7 @@ function TodoApp() {
         setFolderTasks(result ?? []);
       } catch (err) {
         if (controller.signal.aborted) return;
-        reportError(err, "не удалось загрузить список");
+        reportError(err, "Не удалось загрузить список");
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -149,10 +173,12 @@ function TodoApp() {
 
   const handleSelectSystem = useCallback((key) => {
     setView({ type: "system", key });
+    setSelectedTaskId(null);
   }, []);
 
   const handleSelectFolder = useCallback((folder) => {
     setView({ type: "folder", id: folder.id, title: folder.title });
+    setSelectedTaskId(null);
   }, []);
 
   const handleCreateFolder = useCallback(
@@ -161,7 +187,7 @@ function TodoApp() {
         const created = await api.createFolder({ title });
         setFolders((prev) => [...prev, created]);
       } catch (err) {
-        reportError(err, "не удалось создать список");
+        reportError(err, "Не удалось создать список");
       }
     },
     [reportError]
@@ -177,7 +203,7 @@ function TodoApp() {
         // showing a now-meaningless empty/stale list.
         setView((prev) => (prev.type === "folder" && prev.id === id ? { type: "system", key: "all" } : prev));
       } catch (err) {
-        reportError(err, "не удалось удалить список");
+        reportError(err, "Не удалось удалить список");
       }
     },
     [reportError]
@@ -186,22 +212,25 @@ function TodoApp() {
   const handleAdd = useCallback(
     async (payload) => {
       try {
-        const created = await api.createTask(payload);
+        const finalPayload =
+          view.type === "folder" ? { ...payload, folder_id: payload.folder_id ?? view.id } : payload;
+        const created = await api.createTask(finalPayload);
         if (created.folder_id) {
           setFolderTasks((prev) => [...prev, created]);
         } else {
           setTasks((prev) => [...prev, created]);
         }
       } catch (err) {
-        reportError(err, "не удалось создать задачу");
+        reportError(err, "Не удалось создать задачу");
       }
     },
-    [reportError]
+    [reportError, view]
   );
 
   const patchInPlace = useCallback((updated) => {
     setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     setFolderTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    setArchivedTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
   }, []);
 
   const handleToggle = useCallback(
@@ -212,7 +241,7 @@ function TodoApp() {
           : await api.completeTask(task.id);
         patchInPlace(updated);
       } catch (err) {
-        reportError(err, "не удалось изменить статус задачи");
+        reportError(err, "Не удалось изменить статус задачи");
       }
     },
     [reportError, patchInPlace]
@@ -225,8 +254,9 @@ function TodoApp() {
         setTasks((prev) => prev.filter((t) => t.id !== id));
         setFolderTasks((prev) => prev.filter((t) => t.id !== id));
         setArchivedTasks((prev) => (archiveLoaded ? [archived, ...prev] : prev));
+        setSelectedTaskId((prev) => (prev === id ? null : prev));
       } catch (err) {
-        reportError(err, "не удалось архивировать задачу");
+        reportError(err, "Не удалось архивировать задачу");
       }
     },
     [reportError, archiveLoaded]
@@ -243,7 +273,20 @@ function TodoApp() {
           setTasks((prev) => [...prev, restored]);
         }
       } catch (err) {
-        reportError(err, "не удалось восстановить задачу");
+        reportError(err, "Не удалось восстановить задачу");
+      }
+    },
+    [reportError]
+  );
+
+  const handlePermanentlyDelete = useCallback(
+    async (id) => {
+      try {
+        await api.permanentlyDeleteTask(id);
+        setArchivedTasks((prev) => prev.filter((t) => t.id !== id));
+        setSelectedTaskId((prev) => (prev === id ? null : prev));
+      } catch (err) {
+        reportError(err, "Не удалось удалить задачу навсегда");
       }
     },
     [reportError]
@@ -255,7 +298,7 @@ function TodoApp() {
         const updated = await api.patchTask(id, patch);
         patchInPlace(updated);
       } catch (err) {
-        reportError(err, "не удалось изменить задачу");
+        reportError(err, "Не удалось изменить задачу");
       }
     },
     [reportError, patchInPlace]
@@ -263,22 +306,36 @@ function TodoApp() {
 
   const counts = useMemo(() => {
     const done = tasks.filter((t) => t.completed).length;
-    return { all: tasks.length, done, active: tasks.length - done, archive: archivedTasks.length };
+    const today = tasks.filter((t) => t.due_at && isToday(new Date(t.due_at))).length;
+    return {
+      all: tasks.length,
+      today,
+      done,
+      active: tasks.length - done,
+      archive: archivedTasks.length,
+    };
   }, [tasks, archivedTasks]);
 
   const visibleTasks = useMemo(() => {
     if (view.type === "folder") return folderTasks;
     if (view.key === "archive") return archivedTasks;
+    if (view.key === "today") return tasks.filter((t) => t.due_at && isToday(new Date(t.due_at)));
     if (view.key === "active") return tasks.filter((t) => !t.completed);
     if (view.key === "done") return tasks.filter((t) => t.completed);
     return tasks;
   }, [view, tasks, archivedTasks, folderTasks]);
 
-  const title = view.type === "folder" ? `${view.title}.todo` : SYSTEM_LABELS[view.key];
-  const emptyHint = view.type === "folder" ? "в этом списке пока пусто." : SYSTEM_EMPTY_HINTS[view.key];
+  const isArchiveView = view.type === "system" && view.key === "archive";
+  const title = view.type === "folder" ? view.title : SYSTEM_LABELS[view.key];
+  const emptyHint = view.type === "folder" ? "В этом списке пока пусто." : SYSTEM_EMPTY_HINTS[view.key];
+
+  const selectedTask = useMemo(
+    () => visibleTasks.find((t) => t.id === selectedTaskId) ?? null,
+    [visibleTasks, selectedTaskId]
+  );
 
   return (
-    <div className="app-shell app-shell--with-sidebar">
+    <div className="app-shell">
       <Sidebar
         view={view}
         onSelectSystem={handleSelectSystem}
@@ -288,30 +345,42 @@ function TodoApp() {
         onSelectFolder={handleSelectFolder}
         onCreateFolder={handleCreateFolder}
         onDeleteFolder={handleDeleteFolder}
+        user={user}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onLogout={logout}
       />
 
-      <div className="app-shell__content">
-        <main className="app-main">
-          <Buffer
-            view={view}
-            title={title}
-            emptyHint={emptyHint}
-            tasks={visibleTasks}
-            loading={loading}
-            onAdd={handleAdd}
-            onToggle={handleToggle}
-            onArchive={handleArchive}
-            onUnarchive={handleUnarchive}
-            onEdit={handleEdit}
-          />
-        </main>
-
-        <StatusBar
-          mode={view.type === "system" && view.key === "archive" ? "archive" : "normal"}
-          user={user}
-          onLogout={logout}
+      <main className="app-main">
+        <TaskList
+          title={title}
+          emptyHint={emptyHint}
+          tasks={visibleTasks}
+          loading={loading}
+          isArchiveView={isArchiveView}
+          canAdd={!isArchiveView}
+          contextLabel={view.type === "folder" ? view.title : null}
+          allTags={tags}
+          selectedTaskId={selectedTaskId}
+          onAdd={handleAdd}
+          onToggle={handleToggle}
+          onSelect={(task) => setSelectedTaskId(task.id)}
+          onArchive={handleArchive}
         />
-      </div>
+      </main>
+
+      {selectedTask && (
+        <TaskDetail
+          key={selectedTask.id}
+          task={selectedTask}
+          allTags={tags}
+          onClose={() => setSelectedTaskId(null)}
+          onPatch={handleEdit}
+          onArchive={handleArchive}
+          onUnarchive={handleUnarchive}
+          onPermanentlyDelete={handlePermanentlyDelete}
+        />
+      )}
 
       <Toast message={error} onDismiss={() => setError(null)} />
     </div>
@@ -324,7 +393,7 @@ function Root() {
   if (status === "loading") {
     return (
       <div className="app-shell app-shell--centered">
-        <span className="boot-line">инициализация буфера…</span>
+        <span className="boot-line">Загрузка…</span>
       </div>
     );
   }
