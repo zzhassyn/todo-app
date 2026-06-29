@@ -304,6 +304,91 @@ function TodoApp() {
     [reportError, patchInPlace]
   );
 
+  const handleMoveToFolder = useCallback(async (taskId, targetFolderId) => {
+    const task = tasks.find(t => t.id === taskId) || folderTasks.find(t => t.id === taskId) || archivedTasks.find(t => t.id === taskId);
+    if (!task || task.folder_id === targetFolderId) return;
+
+    const backupTasks = [...tasks];
+    const backupFolderTasks = [...folderTasks];
+    
+    const optimisticTask = { ...task, folder_id: targetFolderId };
+    
+    setTasks(prev => prev.map(t => t.id === task.id ? optimisticTask : t));
+    
+    if (view.type === "folder" && view.id === task.folder_id) {
+      setFolderTasks(prev => prev.filter(t => t.id !== task.id));
+    }
+
+    try {
+      const updated = await api.patchTask(task.id, { folder_id: targetFolderId });
+      patchInPlace(updated);
+    } catch (err) {
+      reportError(err, "Не удалось переместить задачу");
+      setTasks(backupTasks);
+      setFolderTasks(backupFolderTasks);
+    }
+  }, [tasks, folderTasks, archivedTasks, view, patchInPlace, reportError]);
+
+  const handleReorderTask = useCallback(async (draggedId, targetId, insertPosition) => {
+    if (draggedId === targetId) return;
+
+    // Use a function to safely get the current visible tasks, since visibleTasks is computed below
+    // We can just rely on the dependency array. But to avoid circular deps, let's compute it.
+    let currentVisible = tasks;
+    if (view.type === "folder") currentVisible = folderTasks;
+    else if (view.key === "archive") currentVisible = archivedTasks;
+    else if (view.key === "today") currentVisible = tasks.filter((t) => t.due_at && isToday(new Date(t.due_at)));
+    else if (view.key === "active") currentVisible = tasks.filter((t) => !t.completed);
+    else if (view.key === "done") currentVisible = tasks.filter((t) => t.completed);
+
+    const draggedIdx = currentVisible.findIndex(t => t.id === draggedId);
+    const targetIdx = currentVisible.findIndex(t => t.id === targetId);
+    if (draggedIdx === -1 || targetIdx === -1) return;
+
+    const draggedTask = currentVisible[draggedIdx];
+    
+    const newList = [...currentVisible];
+    newList.splice(draggedIdx, 1);
+    
+    const insertIdx = newList.findIndex(t => t.id === targetId);
+    const finalIdx = insertPosition === "after" ? insertIdx + 1 : insertIdx;
+    
+    newList.splice(finalIdx, 0, draggedTask);
+
+    const prevTask = newList[finalIdx - 1];
+    const nextTask = newList[finalIdx + 1];
+
+    let newPosition = 0;
+    if (prevTask && nextTask) {
+      newPosition = (prevTask.position + nextTask.position) / 2.0;
+    } else if (prevTask) {
+      newPosition = prevTask.position + 1024.0;
+    } else if (nextTask) {
+      newPosition = nextTask.position - 1024.0;
+    } else {
+      newPosition = Date.now() / 1000.0;
+    }
+
+    const optimisticTask = { ...draggedTask, position: newPosition };
+    // Optimistically update all lists to sort it
+    const sortByPosition = (a, b) => {
+      // also keep folder grouping if needed, but in views they are already filtered by folder
+      return a.position - b.position || a.id - b.id;
+    };
+
+    setTasks(prev => prev.map(t => t.id === draggedId ? optimisticTask : t).sort(sortByPosition));
+    setFolderTasks(prev => prev.map(t => t.id === draggedId ? optimisticTask : t).sort(sortByPosition));
+    setArchivedTasks(prev => prev.map(t => t.id === draggedId ? optimisticTask : t).sort(sortByPosition));
+
+    try {
+      const updated = await api.patchTask(draggedId, { position: newPosition });
+      patchInPlace(updated);
+    } catch (err) {
+      reportError(err, "Не удалось изменить порядок задач");
+      patchInPlace(draggedTask);
+    }
+  }, [view, tasks, folderTasks, archivedTasks, patchInPlace, reportError]);
+
   const counts = useMemo(() => {
     const done = tasks.filter((t) => t.completed).length;
     const today = tasks.filter((t) => t.due_at && isToday(new Date(t.due_at))).length;
@@ -345,6 +430,7 @@ function TodoApp() {
         onSelectFolder={handleSelectFolder}
         onCreateFolder={handleCreateFolder}
         onDeleteFolder={handleDeleteFolder}
+        onMoveToFolder={handleMoveToFolder}
         user={user}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -366,6 +452,7 @@ function TodoApp() {
           onToggle={handleToggle}
           onSelect={(task) => setSelectedTaskId(task.id)}
           onArchive={handleArchive}
+          onReorder={handleReorderTask}
         />
       </main>
 

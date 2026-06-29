@@ -24,10 +24,9 @@ func (r *TasksRepository) CreateTask(
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a documented no-op
 
-	query := `
-	INSERT INTO todoapp.tasks (title, description, completed, author_user_id, priority, due_at, folder_id)
-	VALUES ($1, $2, $3, $4, $5, $6, $7)
-	RETURNING id, version, title, description, completed, created_at, completed_at, author_user_id, priority, due_at, archived_at, folder_id;
+	INSERT INTO todoapp.tasks (title, description, completed, author_user_id, priority, due_at, folder_id, position)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE(NULLIF($8::float8, 0.0), EXTRACT(EPOCH FROM NOW())))
+	RETURNING id, version, title, description, completed, created_at, completed_at, author_user_id, priority, due_at, archived_at, folder_id, position;
 	`
 
 	row := tx.QueryRow(ctx, query,
@@ -38,6 +37,7 @@ func (r *TasksRepository) CreateTask(
 		string(task.Priority),
 		task.DueAt,
 		task.FolderID,
+		task.Position,
 	)
 
 	var taskModel TaskModel
@@ -54,6 +54,7 @@ func (r *TasksRepository) CreateTask(
 		&taskModel.DueAt,
 		&taskModel.ArchivedAt,
 		&taskModel.FolderID,
+		&taskModel.Position,
 	); err != nil {
 		if errors.Is(err, core_postgres_pool.ErrForeignKeyViolation) {
 			return domain.Task{}, fmt.Errorf("folder does not exist: %w", core_errors.ErrInvalidArgument)

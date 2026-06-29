@@ -20,6 +20,7 @@ type TaskModel struct {
 	DueAt        *time.Time
 	ArchivedAt   *time.Time
 	FolderID     *uuid.UUID
+	Position     float64
 }
 
 type TagModel struct {
@@ -80,6 +81,7 @@ func taskDomainFromModel(task TaskModel, tags []domain.Tag, subtasks []domain.Su
 		ArchivedAt:   task.ArchivedAt,
 		Tags:         tags,
 		FolderID:     task.FolderID,
+		Position:     task.Position,
 		Subtasks:     subtasks,
 	})
 }

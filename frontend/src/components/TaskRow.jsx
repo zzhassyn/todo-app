@@ -1,15 +1,40 @@
+import { useState } from "react";
 import { formatShortDate, isOverdue } from "../utils/date";
 import PriorityDot from "./PriorityDot";
 import TagBadge from "./TagBadge";
 
-export default function TaskRow({ task, isSelected, isArchiveView, onToggle, onSelect, onArchive }) {
+export default function TaskRow({ task, isSelected, isArchiveView, onToggle, onSelect, onArchive, onReorder }) {
+  const [dragOverPos, setDragOverPos] = useState(null);
+  
   const due = task.due_at ? new Date(task.due_at) : null;
   const overdue = due && !task.completed && isOverdue(due);
 
   return (
     <div
-      className={`task-row ${isSelected ? "is-selected" : ""} ${task.completed ? "is-completed" : ""}`}
+      draggable
+      className={`task-row ${isSelected ? "is-selected" : ""} ${task.completed ? "is-completed" : ""} ${dragOverPos ? `is-drag-over-${dragOverPos}` : ""}`}
       onClick={() => onSelect(task)}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("application/x-task-id", task.id.toString());
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        setDragOverPos(y < rect.height / 2 ? "before" : "after");
+      }}
+      onDragLeave={() => setDragOverPos(null)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOverPos(null);
+        const draggedIdStr = e.dataTransfer.getData("application/x-task-id");
+        if (draggedIdStr && onReorder) {
+          const draggedId = parseInt(draggedIdStr, 10);
+          if (draggedId !== task.id) {
+            onReorder(draggedId, task.id, dragOverPos);
+          }
+        }
+      }}
     >
       <button
         type="button"

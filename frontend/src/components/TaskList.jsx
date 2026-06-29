@@ -15,6 +15,7 @@ export default function TaskList({
   onToggle,
   onSelect,
   onArchive,
+  onReorder,
 }) {
   return (
     <section className="tasklist">
@@ -40,6 +41,7 @@ export default function TaskList({
               onToggle={onToggle}
               onSelect={onSelect}
               onArchive={onArchive}
+              onReorder={onReorder}
             />
           ))
         )}

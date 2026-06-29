@@ -22,6 +22,7 @@ type Task struct {
 	ArchivedAt   *time.Time
 	Tags         []Tag
 	FolderID     *uuid.UUID
+	Position     float64
 	Subtasks     []Subtask
 }
 
@@ -44,6 +45,7 @@ type TaskParams struct {
 	ArchivedAt   *time.Time
 	Tags         []Tag
 	FolderID     *uuid.UUID
+	Position     float64
 	Subtasks     []Subtask
 }
 
@@ -62,6 +64,7 @@ func NewTask(p TaskParams) Task {
 		ArchivedAt:   p.ArchivedAt,
 		Tags:         p.Tags,
 		FolderID:     p.FolderID,
+		Position:     p.Position,
 		Subtasks:     p.Subtasks,
 	}
 }
@@ -88,6 +91,7 @@ func NewTaskUninitialized(
 		ArchivedAt:   nil,
 		Tags:         nil,
 		FolderID:     folderID,
+		Position:     0,
 		Subtasks:     nil,
 	})
 }
@@ -200,6 +204,7 @@ type TaskPatch struct {
 	// Value=nil moves the task out of any folder (back to the unfiled
 	// "buffer"); Set=true, Value!=nil moves it into that folder.
 	FolderID Nullable[uuid.UUID]
+	Position Nullable[float64]
 }
 
 func (p *TaskPatch) Validate() error {
@@ -252,6 +257,13 @@ func (t *Task) ApplyPatch(patch TaskPatch) error {
 		tmp.FolderID = patch.FolderID.Value
 	}
 
+	if patch.Position.Set {
+		if patch.Position.Value == nil {
+			return fmt.Errorf("`Position` can't be patched to NULL: %w", core_errors.ErrInvalidArgument)
+		}
+		tmp.Position = *patch.Position.Value
+	}
+
 	if err := tmp.Validate(); err != nil {
 		return fmt.Errorf("validate patched task: %w", err)
 	}
@@ -266,6 +278,7 @@ func NewTaskPatch(
 	priority Nullable[Priority],
 	dueAt Nullable[time.Time],
 	folderID Nullable[uuid.UUID],
+	position Nullable[float64],
 ) TaskPatch {
 	return TaskPatch{
 		Title:       title,
@@ -273,5 +286,6 @@ func NewTaskPatch(
 		Priority:    priority,
 		DueAt:       dueAt,
 		FolderID:    folderID,
+		Position:    position,
 	}
 }

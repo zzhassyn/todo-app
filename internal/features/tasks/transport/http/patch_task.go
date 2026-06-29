@@ -30,6 +30,7 @@ type PatchTaskRequest struct {
 	// task out of any folder (back to the unfiled buffer); a UUID =>
 	// move the task into that folder.
 	FolderID core_http_types.Nullable[uuid.UUID] `json:"folder_id"`
+	Position core_http_types.Nullable[float64]   `json:"position"`
 }
 
 func (r *PatchTaskRequest) Validate() error {
@@ -64,6 +65,10 @@ func (r *PatchTaskRequest) Validate() error {
 
 	if r.FolderID.Set && r.FolderID.Value != nil && *r.FolderID.Value == uuid.Nil {
 		return fmt.Errorf("`FolderID` can't be the nil UUID")
+	}
+
+	if r.Position.Set && r.Position.Value == nil {
+		return fmt.Errorf("`Position` cannot be null")
 	}
 
 	return nil
@@ -126,5 +131,6 @@ func taskPatchFromRequest(request PatchTaskRequest) domain.TaskPatch {
 		priority,
 		request.DueAt.ToDomain(),
 		request.FolderID.ToDomain(),
+		request.Position.ToDomain(),
 	)
 }

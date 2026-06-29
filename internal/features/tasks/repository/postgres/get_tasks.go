@@ -81,11 +81,11 @@ func (r *TasksRepository) GetTasks(
 
 	query := fmt.Sprintf(`
 		SELECT DISTINCT t.id, t.version, t.title, t.description, t.completed, t.created_at,
-		       t.completed_at, t.author_user_id, t.priority, t.due_at, t.archived_at, t.folder_id
+		       t.completed_at, t.author_user_id, t.priority, t.due_at, t.archived_at, t.folder_id, t.position
 		FROM todoapp.tasks t
 		%s
 		%s
-		ORDER BY t.id ASC
+		ORDER BY t.position ASC, t.id ASC
 		LIMIT %s OFFSET %s;
 	`, strings.Join(joins, "\n"), whereClause, limitPlaceholder, offsetPlaceholder)
 
@@ -111,6 +111,7 @@ func (r *TasksRepository) GetTasks(
 			&taskModel.DueAt,
 			&taskModel.ArchivedAt,
 			&taskModel.FolderID,
+			&taskModel.Position,
 		); err != nil {
 			return nil, fmt.Errorf("scan tasks: %w", err)
 		}

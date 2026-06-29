@@ -263,6 +263,9 @@
 .sidebar__folder.is-active {
   background: var(--surface-selected);
 }
+.sidebar__folder.is-drag-over {
+  background: var(--surface-hover);
+}
 
 .sidebar__folder-select {
   flex: 1;
@@ -457,6 +460,14 @@
 }
 .task-row.is-selected {
   background: var(--surface-selected);
+}
+
+.task-row.is-drag-over-before {
+  box-shadow: inset 0 2px 0 var(--primary-accent);
+}
+
+.task-row.is-drag-over-after {
+  box-shadow: inset 0 -2px 0 var(--primary-accent);
 }
 
 .task-row__check {

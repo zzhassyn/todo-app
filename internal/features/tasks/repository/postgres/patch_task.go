@@ -43,9 +43,10 @@ func (r *TasksRepository) PatchTask(
 			priority=$5,
 			due_at=$6,
 			folder_id=$7,
+			position=$8,
 			version=version+1
-		WHERE id=$8 AND version=$9
-		RETURNING id, version, title, description, completed, created_at, completed_at, author_user_id, priority, due_at, archived_at, folder_id;
+		WHERE id=$9 AND version=$10
+		RETURNING id, version, title, description, completed, created_at, completed_at, author_user_id, priority, due_at, archived_at, folder_id, position;
 	`
 
 	row := tx.QueryRow(ctx, query,
@@ -56,6 +57,7 @@ func (r *TasksRepository) PatchTask(
 		string(task.Priority),
 		task.DueAt,
 		task.FolderID,
+		task.Position,
 		id,
 		task.Version,
 	)
@@ -74,6 +76,7 @@ func (r *TasksRepository) PatchTask(
 		&taskModel.DueAt,
 		&taskModel.ArchivedAt,
 		&taskModel.FolderID,
+		&taskModel.Position,
 	); err != nil {
 		if errors.Is(err, core_postgres_pool.ErrNoRows) {
 			return domain.Task{}, fmt.Errorf("task with id='%d' concurrently accessed: %w", id, core_errors.ErrConflict)

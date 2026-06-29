@@ -21,7 +21,16 @@ export default function Sidebar({
   theme,
   onToggleTheme,
   onLogout,
+  onMoveToFolder,
 }) {
+  const handleDropToSystem = (key, e) => {
+    e.preventDefault();
+    const taskIdStr = e.dataTransfer.getData("application/x-task-id");
+    if (taskIdStr && key === "all") {
+      onMoveToFolder(parseInt(taskIdStr, 10), null);
+    }
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -36,6 +45,10 @@ export default function Sidebar({
             type="button"
             className={`sidebar__item ${view.type === "system" && view.key === key ? "is-active" : ""}`}
             onClick={() => onSelectSystem(key)}
+            onDragOver={(e) => {
+              if (key === "all") e.preventDefault();
+            }}
+            onDrop={(e) => handleDropToSystem(key, e)}
           >
             <Icon />
             <span className="sidebar__item-label">{label}</span>
@@ -60,6 +73,7 @@ export default function Sidebar({
                 isActive={view.type === "folder" && view.id === folder.id}
                 onSelect={() => onSelectFolder(folder)}
                 onDelete={() => onDeleteFolder(folder.id)}
+                onMoveToFolder={onMoveToFolder}
               />
             ))}
           </ul>
@@ -89,9 +103,26 @@ export default function Sidebar({
   );
 }
 
-function FolderItem({ folder, isActive, onSelect, onDelete }) {
+function FolderItem({ folder, isActive, onSelect, onDelete, onMoveToFolder }) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   return (
-    <li className={`sidebar__folder ${isActive ? "is-active" : ""}`}>
+    <li 
+      className={`sidebar__folder ${isActive ? "is-active" : ""} ${isDragOver ? "is-drag-over" : ""}`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const taskIdStr = e.dataTransfer.getData("application/x-task-id");
+        if (taskIdStr) {
+          onMoveToFolder(parseInt(taskIdStr, 10), folder.id);
+        }
+      }}
+    >
       <button type="button" className="sidebar__folder-select" onClick={onSelect}>
         <FolderIcon />
         <span className="sidebar__item-label">{folder.title}</span>
