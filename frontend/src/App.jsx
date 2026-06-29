@@ -8,6 +8,7 @@ import Sidebar from "./components/Sidebar";
 import TaskList from "./components/TaskList";
 import TaskDetail from "./components/TaskDetail";
 import Toast from "./components/Toast";
+import SearchBar from "./components/SearchBar";
 import "./app.css";
 
 const SYSTEM_LABELS = {
@@ -44,6 +45,11 @@ function TodoApp() {
   const [folderTasks, setFolderTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchScope, setSearchScope] = useState("all");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [folders, setFolders] = useState([]);
   const [foldersLoading, setFoldersLoading] = useState(true);
@@ -144,6 +150,39 @@ function TodoApp() {
     loadArchive();
     return () => controller.abort();
   }, [view, archiveLoaded, reportError]);
+
+  useEffect(() => {
+    if (!searchQuery) {
+      setSearchResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    
+    async function loadSearch() {
+      setIsSearching(true);
+      try {
+        const params = { search: searchQuery };
+        if (searchScope === "current") {
+          if (view.type === "folder") {
+            params.folderId = view.id;
+          } else if (view.key === "archive") {
+            params.archived = true;
+          }
+        }
+        const result = await api.listTasks(params);
+        if (controller.signal.aborted) return;
+        setSearchResults(result ?? []);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        reportError(err, "Ошибка при поиске");
+      } finally {
+        if (!controller.signal.aborted) setIsSearching(false);
+      }
+    }
+    
+    loadSearch();
+    return () => controller.abort();
+  }, [searchQuery, searchScope, view, reportError]);
 
   // Each folder's tasks are fetched fresh every time it's selected, rather
   // than cached per-folder: folder contents change often enough (tasks
@@ -410,13 +449,26 @@ function TodoApp() {
     return tasks;
   }, [view, tasks, archivedTasks, folderTasks]);
 
+  const actualVisibleTasks = useMemo(() => {
+    if (searchQuery) {
+      let results = searchResults;
+      if (searchScope === "current" && view.type === "system") {
+        if (view.key === "today") results = results.filter((t) => t.due_at && isToday(new Date(t.due_at)));
+        if (view.key === "active") results = results.filter((t) => !t.completed);
+        if (view.key === "done") results = results.filter((t) => t.completed);
+      }
+      return results;
+    }
+    return visibleTasks;
+  }, [searchQuery, searchScope, view, searchResults, visibleTasks]);
+
   const isArchiveView = view.type === "system" && view.key === "archive";
-  const title = view.type === "folder" ? view.title : SYSTEM_LABELS[view.key];
-  const emptyHint = view.type === "folder" ? "В этом списке пока пусто." : SYSTEM_EMPTY_HINTS[view.key];
+  const title = searchQuery ? "Результаты поиска" : (view.type === "folder" ? view.title : SYSTEM_LABELS[view.key]);
+  const emptyHint = searchQuery ? "Ничего не найдено." : (view.type === "folder" ? "В этом списке пока пусто." : SYSTEM_EMPTY_HINTS[view.key]);
 
   const selectedTask = useMemo(
-    () => visibleTasks.find((t) => t.id === selectedTaskId) ?? null,
-    [visibleTasks, selectedTaskId]
+    () => actualVisibleTasks.find((t) => t.id === selectedTaskId) ?? null,
+    [actualVisibleTasks, selectedTaskId]
   );
 
   return (
@@ -438,13 +490,20 @@ function TodoApp() {
       />
 
       <main className="app-main">
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          scope={searchScope}
+          onScopeChange={setSearchScope}
+          showScopeToggle={view.type === "folder" || view.type === "system"}
+        />
         <TaskList
           title={title}
           emptyHint={emptyHint}
-          tasks={visibleTasks}
-          loading={loading}
+          tasks={actualVisibleTasks}
+          loading={searchQuery ? isSearching : loading}
           isArchiveView={isArchiveView}
-          canAdd={!isArchiveView}
+          canAdd={!isArchiveView && !searchQuery}
           contextLabel={view.type === "folder" ? view.title : null}
           allTags={tags}
           selectedTaskId={selectedTaskId}
@@ -452,7 +511,7 @@ function TodoApp() {
           onToggle={handleToggle}
           onSelect={(task) => setSelectedTaskId(task.id)}
           onArchive={handleArchive}
-          onReorder={handleReorderTask}
+          onReorder={searchQuery ? null : handleReorderTask}
         />
       </main>
 

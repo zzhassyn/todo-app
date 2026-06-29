@@ -51,6 +51,7 @@ export const api = {
     }
     if (params.priority) query.set("priority", params.priority);
     if (params.tag) query.set("tag", params.tag);
+    if (params.search) query.set("search", params.search);
     if (params.folderId) query.set("folder_id", params.folderId);
     if (params.limit) query.set("limit", String(params.limit));
     if (params.offset) query.set("offset", String(params.offset));
