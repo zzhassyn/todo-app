@@ -63,6 +63,7 @@ export const api = {
     request(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   archiveTask: (id) => request(`/tasks/${id}/archive`, { method: "POST" }),
   unarchiveTask: (id) => request(`/tasks/${id}/unarchive`, { method: "POST" }),
+  permanentlyDeleteTask: (id) => request(`/tasks/${id}/permanent`, { method: "DELETE" }),
   completeTask: (id) => request(`/tasks/${id}/complete`, { method: "POST" }),
   uncompleteTask: (id) => request(`/tasks/${id}/uncomplete`, { method: "POST" }),
 
