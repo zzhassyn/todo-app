@@ -1,0 +1,32 @@
+package core_http_server
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/kelseyhightower/envconfig"
+)
+
+type Config struct {
+	Addr            string        `envconfig:"ADDR" required:"true"`
+	ShutdownTimeout time.Duration `envconfig:"SHUTDOWN_TIMEOUT" default:"30s"`
+	AllowedOrigin   string        `envconfig:"ALLOWED_ORIGIN" default:"http://localhost:5173"`
+}
+
+func NewConfig() (Config, error) {
+	var config Config
+	if err := envconfig.Process("HTTP", &config); err != nil {
+		return Config{}, fmt.Errorf("failed to process config: %w", err)
+	}
+
+	return config, nil
+}
+
+func NewConfigMust() Config {
+	config, err := NewConfig()
+	if err != nil {
+		err := fmt.Errorf("failed to load config: %w", err)
+		panic(err)
+	}
+	return config
+}
