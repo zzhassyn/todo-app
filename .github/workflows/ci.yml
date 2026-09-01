@@ -71,8 +71,4 @@ jobs:
         run: npx eslint src/
 
       - name: Build
-        run: npm run build
-
-linters-settings:
-  staticcheck:
-    checks: ["all", "-ST1000", "-ST1020", "-ST1005"]
+        run: npm run build

@@ -13,18 +13,12 @@ env-down:
 env-cleanup:
 	@read -p "This will remove all containers, volumes, and networks. Are you sure? (y/n): " answer; \
 	if [ "$$answer" = "y" ]; then \
-		docker compose down todoapp-postgres port-forwarder && \
+		docker compose down todoapp-postgres && \
 		rm -rf ${PROJECT_ROOT}/out/pgdata && \
 		echo "Cleanup completed."; \
 	else \
 		echo "Cleanup aborted."; \
 	fi
-
-env-port-forward:
-	@docker compose up -d port-forwarder
-
-env-port-close:
-	@docker compose down port-forwarder
 
 migrate-create:
 	@if [ -z "$(seq)" ]; then \
@@ -56,6 +50,8 @@ migrate-action:
 
 todoapp-run:
 	@export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs && \
-	export POSTGRES_HOST=localhost && \
+	export POSTGRES_HOST=127.0.0.1 && \
+	export POSTGRES_PORT=5433 && \
+	cd backend && \
 	go mod tidy && \
-	go run ${PROJECT_ROOT}/cmd/todoapp/main.go
+	go run cmd/todoapp/main.go

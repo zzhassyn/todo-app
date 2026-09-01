@@ -1,13 +1,15 @@
 services:
   todoapp-postgres:
-    image: postgres:18.4-bookworm
+    image: postgres:17-alpine
     container_name: todoapp-env-postgres
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
@@ -21,14 +23,47 @@ services:
       todoapp-postgres:
         condition: service_healthy
     volumes:
-      - ${PROJECT_ROOT}/migrations:/migrations
+      - ./backend/migrations:/migrations
+    command:
+      - -path=/migrations
+      - -database=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@todoapp-postgres:5432/${POSTGRES_DB}?sslmode=disable
+      - up
 
-  port-forwarder:
-    image: alpine/socat:1.8.0.3
-    container_name: todoapp-postgres-port-forwarder
-    command: tcp-listen:5432,fork,reuseaddr tcp-connect:todoapp-postgres:5432
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_HOST: todoapp-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_TIMEOUT: ${POSTGRES_TIMEOUT}
+      HTTP_ADDR: :8080
+      HTTP_ALLOWED_ORIGIN: http://localhost
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET}
+      AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL}
+      AUTH_COOKIE_NAME: ${AUTH_COOKIE_NAME}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE}
+      LOGGER_FOLDER: ""
+      LOGGER_LEVEL: DEBUG
     ports:
-      - "127.0.0.1:5432:5432"
+      - "8080:8080"
+    depends_on:
+      todoapp-postgres:
+        condition: service_healthy
+      todoapp-postgres-migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
