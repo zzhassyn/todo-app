@@ -29,8 +29,8 @@ A full-featured To-Do application built with a **Go** backend (following Clean A
 
 The Go backend follows a Clean Architecture approach and is divided into two top-level blocks:
 
-1. **`internal/core`**: The reusable core, independent of business logic. It contains domain primitives (`domain`), unified errors (`errors`), logging (`logger`), authentication context (`auth`), PostgreSQL connection pooling (`repository/postgres/pool`), and HTTP infrastructure (server, router, middleware).
-2. **`internal/features`**: Independent vertical slices of features. Each feature contains its own `repository` -> `service` -> `transport` layers.
+1. **`backend/internal/core`**: The reusable core, independent of business logic. It contains domain primitives (`domain`), unified errors (`errors`), logging (`logger`), authentication context (`auth`), PostgreSQL connection pooling (`repository/postgres/pool`), and HTTP infrastructure (server, router, middleware).
+2. **`backend/internal/features`**: Independent vertical slices of features. Each feature contains its own `repository` -> `service` -> `transport` layers.
 
 ### Implemented Features
 - **`users`**: User profiles and management.
@@ -74,9 +74,9 @@ Fill in the necessary values inside `.env` (e.g., `POSTGRES_USER`, `POSTGRES_PAS
 ### 2. Start the Full Stack (Docker)
 You can build and start the entire stack (PostgreSQL, Go Backend, React Frontend) with one command:
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
-The frontend will be available at `http://localhost:80`, and the backend API will be running on `http://localhost:8080`.
+The frontend will be available at `http://localhost:80`, and the backend API will be proxied automatically.
 
 ### Alternative: Local Development
 
@@ -85,7 +85,6 @@ If you prefer to run the Go application and Vite dev server directly on your hos
 **1. Database and Migrations:**
 ```bash
 make env-up
-make env-port-forward
 make migrate-up
 ```
 
