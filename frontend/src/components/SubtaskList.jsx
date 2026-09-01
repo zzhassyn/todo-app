@@ -114,10 +114,22 @@ export default function SubtaskList({ taskId, initialSubtasks = [], disabled = f
             key={st.id}
             className="subtask-row"
             draggable={!disabled}
-            onDragStart={() => (dragItem.current = idx)}
-            onDragEnter={() => (dragOverItem.current = idx)}
+            onDragStart={(e) => {
+              dragItem.current = idx;
+              e.dataTransfer.setData("application/x-subtask-idx", idx.toString());
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragEnter={(e) => {
+              if (e.dataTransfer.types.includes("application/x-subtask-idx")) {
+                dragOverItem.current = idx;
+              }
+            }}
             onDragEnd={handleSort}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes("application/x-subtask-idx")) {
+                e.preventDefault();
+              }
+            }}
           >
             <div className="subtask-row__drag-handle" aria-hidden="true">
               ⋮⋮

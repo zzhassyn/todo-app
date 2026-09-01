@@ -3,21 +3,32 @@ import { formatShortDate, isOverdue } from "../utils/date";
 import PriorityDot from "./PriorityDot";
 import TagBadge from "./TagBadge";
 
-export default function TaskRow({ task, isSelected, isArchiveView, onToggle, onSelect, onArchive, onReorder }) {
+export default function TaskRow({ task, isSelected, isBatchSelected, isArchiveView, onToggle, onSelect, onArchive, onReorder, onToggleBatchSelect }) {
   const [dragOverPos, setDragOverPos] = useState(null);
   
   const due = task.due_at ? new Date(task.due_at) : null;
   const overdue = due && !task.completed && isOverdue(due);
 
+  const isTaskDrag = (e) => e.dataTransfer.types.includes("application/x-task-id");
+
   return (
     <div
-      draggable
-      className={`task-row ${isSelected ? "is-selected" : ""} ${task.completed ? "is-completed" : ""} ${dragOverPos ? `is-drag-over-${dragOverPos}` : ""}`}
-      onClick={() => onSelect(task)}
+      draggable={!!onReorder}
+      className={`task-row ${isSelected ? "is-selected" : ""} ${isBatchSelected ? "is-batch-selected" : ""} ${task.completed ? "is-completed" : ""} ${dragOverPos ? `is-drag-over-${dragOverPos}` : ""}`}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          e.preventDefault();
+          onToggleBatchSelect(task.id);
+        } else {
+          onSelect(task);
+        }
+      }}
       onDragStart={(e) => {
         e.dataTransfer.setData("application/x-task-id", task.id.toString());
+        e.dataTransfer.effectAllowed = "move";
       }}
       onDragOver={(e) => {
+        if (!isTaskDrag(e)) return;
         e.preventDefault();
         const rect = e.currentTarget.getBoundingClientRect();
         const y = e.clientY - rect.top;
@@ -25,17 +36,30 @@ export default function TaskRow({ task, isSelected, isArchiveView, onToggle, onS
       }}
       onDragLeave={() => setDragOverPos(null)}
       onDrop={(e) => {
+        if (!isTaskDrag(e)) return;
         e.preventDefault();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const pos = y < rect.height / 2 ? "before" : "after";
         setDragOverPos(null);
         const draggedIdStr = e.dataTransfer.getData("application/x-task-id");
         if (draggedIdStr && onReorder) {
           const draggedId = parseInt(draggedIdStr, 10);
           if (draggedId !== task.id) {
-            onReorder(draggedId, task.id, dragOverPos);
+            onReorder(draggedId, task.id, pos);
           }
         }
       }}
     >
+      <div className="task-row__batch-select" onClick={(e) => e.stopPropagation()}>
+        <input 
+          type="checkbox" 
+          checked={isBatchSelected || false} 
+          onChange={() => onToggleBatchSelect(task.id)}
+          title="Выбрать для массовых действий (или Shift+Click)"
+        />
+      </div>
+
       <button
         type="button"
         className="task-row__check"
@@ -107,3 +131,4 @@ export default function TaskRow({ task, isSelected, isArchiveView, onToggle, onS
     </div>
   );
 }
+

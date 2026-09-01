@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SearchBar from "./SearchBar";
 
 const SYSTEM_FILTERS = [
   ["all", "Все", AllIcon],
@@ -22,6 +23,11 @@ export default function Sidebar({
   onToggleTheme,
   onLogout,
   onMoveToFolder,
+  searchQuery,
+  setSearchQuery,
+  searchScope,
+  setSearchScope,
+  showScopeToggle,
 }) {
   const handleDropToSystem = (key, e) => {
     e.preventDefault();
@@ -36,6 +42,16 @@ export default function Sidebar({
       <div className="sidebar__brand">
         <span className="sidebar__brand-mark" aria-hidden="true" />
         Задачи
+      </div>
+
+      <div className="sidebar__search" style={{ padding: '0 var(--space-2)' }}>
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          scope={searchScope}
+          onScopeChange={setSearchScope}
+          showScopeToggle={showScopeToggle}
+        />
       </div>
 
       <nav className="sidebar__section" aria-label="Фильтры">

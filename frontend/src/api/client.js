@@ -26,6 +26,17 @@ async function request(path, options = {}) {
   const body = isJSON ? await res.json().catch(() => null) : null;
 
   if (!res.ok) {
+    if (res.status === 401 && !options._retry && path !== "/auth/login" && path !== "/auth/refresh" && path !== "/auth/register") {
+      options._retry = true;
+      try {
+        await request("/auth/refresh", { method: "POST" });
+        return request(path, options);
+      } catch (refreshErr) {
+        // If refresh fails, we throw the original 401 error
+        // so the app correctly logs the user out
+      }
+    }
+
     const message = body?.message || body?.error || `request failed (${res.status})`;
     throw new ApiError(message, res.status);
   }
@@ -67,6 +78,14 @@ export const api = {
   permanentlyDeleteTask: (id) => request(`/tasks/${id}/permanent`, { method: "DELETE" }),
   completeTask: (id) => request(`/tasks/${id}/complete`, { method: "POST" }),
   uncompleteTask: (id) => request(`/tasks/${id}/uncomplete`, { method: "POST" }),
+
+  bulkPatchTasks: (payload) => request("/tasks/bulk", { method: "PATCH", body: JSON.stringify(payload) }),
+  bulkCompleteTasks: (taskIds) => request("/tasks/bulk/complete", { method: "POST", body: JSON.stringify({ task_ids: taskIds }) }),
+  bulkArchiveTasks: (taskIds) => request("/tasks/bulk/archive", { method: "POST", body: JSON.stringify({ task_ids: taskIds }) }),
+
+  createRecurringTask: (payload) => request("/recurring-tasks", { method: "POST", body: JSON.stringify(payload) }),
+  listRecurringTasks: () => request("/recurring-tasks"),
+  deleteRecurringTask: (id) => request(`/recurring-tasks/${id}`, { method: "DELETE" }),
 
   createSubtask: (taskId, payload) =>
     request(`/tasks/${taskId}/subtasks`, { method: "POST", body: JSON.stringify(payload) }),
